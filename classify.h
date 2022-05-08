@@ -24,7 +24,7 @@ public:
 
    void zero() { // Initialize
       for(int i=0; i<_numcount; i++)
-	 _counts[i] = 0;
+	      _counts[i] = 0;
    }
 
    void increase(unsigned int id) { // If each sub-counter belongs to a thread mutual exclusion is not needed
@@ -43,10 +43,17 @@ public:
       return _counts[id];
    }
 
+   unsigned int xIncreaseAndGet(unsigned int id) { // safe increment and return subcounter value for specific thread
+      assert(id < _numcount);
+      const std::lock_guard<std::mutex> lock(cmutex);
+      _counts[id]++;
+      return _counts[id];
+   }
+
    void inspect() {
       std::cout << "Subcounts -- ";
       for(int i=0; i<_numcount; i++)
-	 std::cout << i << ":" << _counts[i] << " ";
+	      std::cout << i << ":" << _counts[i] << " ";
       std::cout << "\n";
    }
 

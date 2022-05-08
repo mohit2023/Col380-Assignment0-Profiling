@@ -6,10 +6,11 @@ sources=main.cpp classify.cpp
 objects=$(sources:.cpp=.o)
 
 classify:$(objects)
-	$(CC) $(CFLAGS) -pg -g -fopenmp $^ -o $@
+	$(CC) $(CFLAGS) -fopenmp $^ -o $@
 
 run: classify
 	./classify rfile dfile 1009072 4 3
+
 
 #classify.o: classify.h
 #	touch classify.o
@@ -18,4 +19,4 @@ run: classify
 #	$(CC) $(CFLAGS) -c $<
 
 %.o: %.cpp classify.h
-	$(CC) $(CFLAGS) -c -pg -g $<
+	$(CC) $(CFLAGS) -c -fopenmp $<

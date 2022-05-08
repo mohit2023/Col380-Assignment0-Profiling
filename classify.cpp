@@ -8,8 +8,22 @@ Data classify(Data &D, const Ranges &R, unsigned int numt)
    #pragma omp parallel num_threads(numt)
    {
       int tid = omp_get_thread_num(); // I am thread number tid
-      for(int i=tid; i<D.ndata; i+=numt) { // Threads together share-loop through all of Data
-         int v = D.data[i].value = R.range(D.data[i].key);// For each data, find the interval of data's key,
+      int per_thread = D.ndata/numt;
+      int extra = D.ndata%numt;
+      int start = per_thread*tid;
+      if(tid<extra) {
+         start += tid;
+      }
+      else {
+         start += extra;
+      }
+      int end = start + per_thread;
+      if(tid<extra) {
+         end += 1;
+      }
+      for(int i=start; i<end; i++) { // Threads together share-loop through all of Data
+         int data_key = D.data[i].key;
+         int v = D.data[i].value = R.range(data_key);// For each data, find the interval of data's key,
 							  // and store the interval id in value. D is changed.
          counts[v].increase(tid); // Found one key in interval v
       }
@@ -27,6 +41,7 @@ Data classify(Data &D, const Ranges &R, unsigned int numt)
    // Compute prefx sum on rangecount.
    for(int i=1; i<R.num(); i++) {
       rangecount[i] += rangecount[i-1];
+      counts[i].zero();
    }
 
    // Now rangecount[i] has the number of elements in intervals before the ith interval.
@@ -35,14 +50,36 @@ Data classify(Data &D, const Ranges &R, unsigned int numt)
    
    #pragma omp parallel num_threads(numt)
    {
+      // int tid = omp_get_thread_num();
+      // for(int r=tid; r<R.num(); r+=numt) { // Thread together share-loop through the intervals 
+      //    int rcount = 0;
+      //    for(int d=0; d<D.ndata; d++) // For each interval, thread loops through all of data and  
+      //        if(D.data[d].value == r) // If the data item is in this interval 
+      //            D2.data[rangecount[r-1]+rcount++] = D.data[d]; // Copy it to the appropriate place in D2.
+      // }
+
       int tid = omp_get_thread_num();
-      for(int r=tid; r<R.num(); r+=numt) { // Thread together share-loop through the intervals 
-         int rcount = 0;
-         for(int d=0; d<D.ndata; d++) // For each interval, thread loops through all of data and  
-             if(D.data[d].value == r) // If the data item is in this interval 
-                 D2.data[rangecount[r-1]+rcount++] = D.data[d]; // Copy it to the appropriate place in D2.
+      int per_thread = D.ndata/numt;
+      int extra = D.ndata%numt;
+      int start = per_thread*tid;
+      if(tid<extra) {
+         start += tid;
+      }
+      else {
+         start += extra;
+      }
+      int end = start + per_thread;
+      if(tid<extra) {
+         end += 1;
+      }
+      for(int i=start; i<end; i++) {
+         int r = D.data[i].value;
+         int shift = counts[r].xIncreaseAndGet(0);
+         D2.data[rangecount[r-1]+shift-1] = D.data[i];
       }
    }
 
    return D2;
 }
+
+// TODO : confusion: IN main.cpp, line 58, D.ndata= d should be there instead of d-1. 
